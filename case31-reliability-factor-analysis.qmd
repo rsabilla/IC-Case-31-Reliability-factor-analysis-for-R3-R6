@@ -1,0 +1,253 @@
+---
+title: "IC Case 31: Reliability & Factor Analysis for R3 and R6"
+subtitle: "Employees Federal Credit Union (EFCU)"
+author: "Ron Sabilla"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    toc-location: left
+    number-sections: true
+    theme: cosmo
+    embed-resources: true
+    code-fold: show
+    code-tools: true
+execute:
+  warning: false
+  message: false
+---
+
+## Purpose
+
+Before I combine any multi-item questions into a single score, I need to check that each scale actually measures one thing (**validity**) and does so consistently (**reliability**). Case 31 has two multi-item scales:
+
+| Research Question | Construct | Items |
+|---|---|---|
+| **R3** | Attitude toward employee proficiency | Q3 Courteous, Q4 Helpful, Q5 Professional, Q6 Available |
+| **R6** | Attitude toward operational effectiveness | Q31 Confidential, Q32 Prompt, Q33 Meets members' needs, Q34 Loan applications simple |
+
+All eight items use the same 5-point scale (1 = Strongly Disagree, 5 = Strongly Agree), so higher always means more positive and nothing needs to be reverse-coded.
+
+My approach for each scale:
+
+1. **Factorability:** inter-item correlations, KMO, and Bartlett's test
+2. **Convergent validity:** number of components (eigenvalues > 1, scree plot), loadings, and communalities
+3. **Discriminant validity:** a factor analysis with all 8 items together, to see if each item lands on its own construct
+4. **Reliability:** Cronbach's alpha and alpha-if-item-deleted
+5. **Decision:** whether to build a composite score
+
+This report only covers scale quality. The actual R3/R6 insights come later in the M13 in-class activity.
+
+## Setup and Data
+
+```{r}
+#| label: setup
+library(haven)   # read SPSS .sav
+library(psych)   # KMO, principal(), fa(), alpha()
+
+efcu <- zap_labels(read_sav("case31_efcu.sav"))
+
+r3_items  <- c("q3", "q4", "q5", "q6")
+r6_items  <- c("q31", "q32", "q33", "q34")
+
+r3  <- efcu[, r3_items]
+r6  <- efcu[, r6_items]
+all8 <- efcu[, c(r3_items, r6_items)]
+
+cat("Respondents:", nrow(efcu), "\n")
+colSums(is.na(all8))   # missing values per item
+```
+
+There are 128 respondents and **no missing values** on any of the eight items, so every analysis below uses the full sample.
+
+```{r}
+#| label: descriptives
+describe(all8)[, c("n", "mean", "sd", "median", "min", "max", "skew")]
+```
+
+The R3 items average around 4.1–4.4, so members are pretty positive about employees. The R6 items are a bit lower (3.5–3.9), and Q34 (loan applications simple) has the lowest mean.
+
+## R3: Attitude Toward Employee Proficiency (Q3–Q6)
+
+### Factorability
+
+```{r}
+#| label: r3-cor
+round(cor(r3), 2)
+KMO(r3)
+cortest.bartlett(cor(r3), n = nrow(r3))
+```
+
+- **Correlations:** all six inter-item correlations are moderate to strong (.46 to .72). That's what I'd expect if all four items are measuring the same thing.
+- **KMO = 0.78** ("middling" to good), and every item's MSA is above 0.70, so the data is suitable for factor analysis.
+- **Bartlett's test** is highly significant (χ² ≈ 263.6, p < .001), so the correlation matrix isn't an identity matrix and there's enough shared variance to factor.
+
+### Convergent validity
+
+```{r}
+#| label: r3-eigen
+#| fig-width: 6
+#| fig-height: 4
+r3_eigen <- eigen(cor(r3))$values
+round(r3_eigen, 3)
+
+plot(r3_eigen, type = "b", pch = 19,
+     xlab = "Component", ylab = "Eigenvalue",
+     main = "Scree Plot: R3 (Q3–Q6)")
+abline(h = 1, lty = 2, col = "red")
+```
+
+```{r}
+#| label: r3-pca
+r3_pca <- principal(r3, nfactors = 1, rotate = "none")
+print(r3_pca, digits = 2)
+```
+
+- **One component** emerges. Only the first eigenvalue is above 1 (2.88), and the scree plot drops off sharply after it.
+- That single component explains **72% of the variance** in the four items.
+- **Loadings are strong** for all items (.81 to .91), well above the usual .50 cutoff.
+- **Communalities (h2) range from .65 to .83**, so the component captures most of each item's variance. Q4 (helpful) is the strongest item at .83.
+
+This supports **convergent validity**: the four items hang together as one "employee proficiency" construct.
+
+### Reliability
+
+```{r}
+#| label: r3-alpha
+r3_alpha <- alpha(r3)
+r3_alpha
+```
+
+- **Cronbach's alpha = 0.87**, comfortably above the 0.70 benchmark, so the scale is internally consistent.
+- **Alpha if item deleted:** removing any item lowers alpha (to .79–.85), so every item contributes and none should be dropped.
+- **Item–total correlations (r.drop)** range from .66 to .82, which are all strong.
+
+## R6: Attitude Toward Operational Effectiveness (Q31–Q34)
+
+### Factorability
+
+```{r}
+#| label: r6-cor
+round(cor(r6), 2)
+KMO(r6)
+cortest.bartlett(cor(r6), n = nrow(r6))
+```
+
+This is where things start to look off.
+
+- **Correlations are weak.** They range from .00 (Q31–Q34) to .39 (Q32–Q34). Q33 barely correlates with Q31 (.12) or Q34 (.04).
+- **KMO = 0.50**, which is the lowest level that's even considered acceptable ("miserable" by Kaiser's labels). Q31 and Q34 have individual MSAs below .50.
+- **Bartlett's test** is still significant (χ² ≈ 39.3, p < .001). But with this sample size, that only tells me the items aren't *completely* unrelated, not that they form one factor.
+
+### Convergent validity
+
+```{r}
+#| label: r6-eigen
+#| fig-width: 6
+#| fig-height: 4
+r6_eigen <- eigen(cor(r6))$values
+round(r6_eigen, 3)
+
+plot(r6_eigen, type = "b", pch = 19,
+     xlab = "Component", ylab = "Eigenvalue",
+     main = "Scree Plot: R6 (Q31–Q34)")
+abline(h = 1, lty = 2, col = "red")
+```
+
+```{r}
+#| label: r6-pca1
+r6_pca1 <- principal(r6, nfactors = 1, rotate = "none")
+print(r6_pca1, digits = 2)
+```
+
+```{r}
+#| label: r6-pca2
+r6_pca2 <- principal(r6, nfactors = 2, rotate = "varimax")
+print(r6_pca2, digits = 2)
+```
+
+- **Two eigenvalues are above 1** (1.58 and 1.03), so the data suggests **two components, not one**.
+- If I force a single component, it only explains **39% of the variance**. Q31 (.51) and Q33 (.48) barely load, and their **communalities are low (.26 and .23)**, meaning the component misses about three-quarters of their variance. The residual fit is also poor (RMSR = 0.20).
+- With two components, the items split into pairs:
+  - **Component 1:** Q32 (prompt) and Q34 (loan applications simple). These are more about **speed and ease of service**.
+  - **Component 2:** Q31 (confidential) and Q33 (meets members' needs). These are more about **trust and fit**.
+- I also tried a common factor model (`fa()` with principal axis and ML). Both produced a **Heywood case**, where Q32's loading hits 1.0 or higher. That's another warning sign that these four items don't support a single-factor solution.
+
+So the R6 items **do not show convergent validity** as one "operational effectiveness" construct.
+
+### Reliability
+
+```{r}
+#| label: r6-alpha
+r6_alpha <- alpha(r6)
+r6_alpha
+```
+
+- **Cronbach's alpha = 0.47**, well below 0.70, so the scale is **not reliable** as a four-item measure.
+- **Alpha if item deleted:** dropping Q31, Q33, or Q34 doesn't push alpha anywhere near 0.70 (it stays .44–.47). Dropping Q32 tanks it to .14, since Q32 is the only item holding the scale together.
+- **Item–total correlations** for Q31, Q33, and Q34 are low (.19 to .23).
+
+```{r}
+#| label: r6-pair
+# Does the strongest pair (Q32 + Q34) work on its own?
+alpha(efcu[, c("q32", "q34")])$total[, c("raw_alpha", "std.alpha")]
+```
+
+Even the strongest pair (Q32 + Q34) only reaches **alpha = 0.56**, so there's no simple trimmed version of R6 that's reliable.
+
+## Discriminant Validity: All Eight Items Together
+
+```{r}
+#| label: all8-check
+KMO(all8)$MSA
+round(eigen(cor(all8))$values, 3)
+```
+
+```{r}
+#| label: all8-pca
+all8_pca <- principal(all8, nfactors = 2, rotate = "varimax")
+print(all8_pca$loadings, cutoff = 0, digits = 2)
+```
+
+If both scales were valid and distinct, I'd expect Q3–Q6 to load on one component and Q31–Q34 on the other, with little crossover.
+
+- **R3 items behave exactly as expected.** Q3–Q6 load strongly on Component 1 (.79 to .88) and barely on Component 2 (–.09 to .20). So R3 shows good **discriminant validity**.
+- **R6 items don't.** Only Q32 (.75) and Q34 (.87) load on their own component. **Q33 (.51) and Q31 (.37) load more on the employee proficiency component** than on the operational one (.13 and .19).
+- That makes sense when I look at the correlations: Q33 ("CU meets needs of members") correlates .41–.42 with Q5 and Q6 (professional, available). Members seem to think about "meeting needs" in terms of the people they deal with, not operations.
+
+So R6 **lacks discriminant validity**. Two of its four items overlap more with employee proficiency than with operational effectiveness.
+
+## Summary of Results
+
+| Check | R3: Employee Proficiency | R6: Operational Effectiveness |
+|---|---|---|
+| Inter-item correlations | .46 – .72 (strong) | .00 – .39 (weak) |
+| KMO | 0.78 ✅ | 0.50 ⚠️ |
+| Bartlett's test | p < .001 ✅ | p < .001 ✅ |
+| Components (eigenvalue > 1) | 1 ✅ | 2 ❌ |
+| Variance explained (1 component) | 72% ✅ | 39% ❌ |
+| Loadings | .81 – .91 ✅ | .48 – .84 ⚠️ |
+| Communalities | .65 – .83 ✅ | .23 – .71 ❌ |
+| Discriminant validity (8-item EFA) | Clean ✅ | Q31 & Q33 cross over ❌ |
+| Cronbach's alpha | **0.87** ✅ | **0.47** ❌ |
+| **Composite scale?** | **Yes** | **No** |
+
+## Implications for the Next Step in Analysis
+
+**R3: Build a composite.** All four items load on one factor, explain most of the variance, stay distinct from the R6 items, and have strong reliability (α = .87). For the M13 analysis, I'll average Q3–Q6 into one "employee proficiency" score and use that instead of four separate items. It's simpler to report and more stable than any single item.
+
+```{r}
+#| label: r3-composite
+efcu$employee_proficiency <- rowMeans(efcu[, r3_items])
+summary(efcu$employee_proficiency)
+```
+
+**R6: Don't build a composite.** The items split into two components, half of them overlap with the employee scale, and alpha (.47) is far below .70 with no item I can drop to fix it. Averaging them into one "operational effectiveness" score would combine things that don't belong together and hide what's really going on. For M13, I'll **analyze Q31–Q34 as individual items** (frequencies, means, and comparisons per item). If a summary is needed, I'll talk about the two themes (speed/ease vs. trust/fit) separately rather than reporting one combined number.
+
+**One caveat:** R6 has only four items and a fairly small sample (n = 128), which makes weak correlations less stable. If EFCU runs this survey again, the operational effectiveness scale should be rewritten with more items that clearly focus on operations (processing speed, accuracy, ease of transactions) so it doesn't blend into how members feel about employees.
+
+## Appendix
+
+- **GitHub Repo:** <https://github.com/rsabilla/REPO-NAME>
+- **GitHub Pages:** <https://rsabilla.github.io/REPO-NAME/>
