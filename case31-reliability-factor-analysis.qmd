@@ -249,5 +249,5 @@ summary(efcu$employee_proficiency)
 
 ## Appendix
 
-- **GitHub Repo:** <https://github.com/rsabilla/REPO-NAME>
-- **GitHub Pages:** <https://rsabilla.github.io/REPO-NAME/>
+- **GitHub Repo:** <https://github.com/rsabilla/IC-Case-31-Reliability-factor-analysis-for-R3-R6>
+- **GitHub Pages:** <https://rsabilla.github.io/IC-Case-31-Reliability-factor-analysis-for-R3-R6/>
